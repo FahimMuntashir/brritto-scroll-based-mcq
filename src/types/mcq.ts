@@ -39,6 +39,7 @@ export interface SessionStats {
 
 export interface FilterState {
   showOptions: boolean;
+  showAnswer: boolean;
   showExplanation: boolean;
   showAnalytics: boolean;
   showAllAnswers: boolean;

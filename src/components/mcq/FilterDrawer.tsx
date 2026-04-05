@@ -19,10 +19,12 @@ const FilterDrawer = ({
   jumpToQuestion, onJumpChange, onApply, onReset,
 }: FilterDrawerProps) => {
   const [draftFilters, setDraftFilters] = useState(filters);
+  const [validationMessage, setValidationMessage] = useState('');
 
   useEffect(() => {
     if (open) {
       setDraftFilters(filters);
+      setValidationMessage('');
     }
   }, [open, filters]);
 
@@ -51,6 +53,11 @@ const FilterDrawer = ({
             onChange={v => setDraftFilters(prev => ({ ...prev, showOptions: v }))}
           />
           <FilterRow
+            label="Show Answer"
+            checked={draftFilters.showAnswer}
+            onChange={v => setDraftFilters(prev => ({ ...prev, showAnswer: v }))}
+          />
+          <FilterRow
             label="Explanation"
             checked={draftFilters.showExplanation}
             onChange={v => setDraftFilters(prev => ({ ...prev, showExplanation: v }))}
@@ -60,6 +67,17 @@ const FilterDrawer = ({
             checked={draftFilters.showAnalytics}
             onChange={v => setDraftFilters(prev => ({ ...prev, showAnalytics: v }))}
           />
+
+          <p className="text-xs leading-5 text-muted-foreground">
+            Explanation automatically reveals answer. Analytics cannot be enabled alone, and some analytics states
+            auto-reveal options based on the matrix.
+          </p>
+
+          {validationMessage ? (
+            <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+              {validationMessage}
+            </div>
+          ) : null}
 
           <div className="pt-4 border-t border-border">
             <p className="text-sm font-semibold text-foreground mb-2">JUMP TO QUESTION</p>
@@ -84,6 +102,16 @@ const FilterDrawer = ({
           </button>
           <button
             onClick={() => {
+              if (
+                draftFilters.showAnalytics &&
+                !draftFilters.showOptions &&
+                !draftFilters.showAnswer &&
+                !draftFilters.showExplanation &&
+                !draftFilters.showAllAnswers
+              ) {
+                setValidationMessage('Analytics cannot be enabled alone. Turn on Options, Answer, or Explanation first.');
+                return;
+              }
               onApplyFilters(draftFilters);
               onApply();
             }}

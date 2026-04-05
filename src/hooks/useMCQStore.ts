@@ -10,7 +10,8 @@ export function useMCQStore() {
   const [answers, setAnswers] = useState<Record<number, UserAnswer>>({});
   const [favourites, setFavourites] = useState<Set<number>>(new Set());
   const [filters, setFilters] = useState<FilterState>({
-    showOptions: true,
+    showOptions: false,
+    showAnswer: false,
     showExplanation: false,
     showAnalytics: false,
     showAllAnswers: false,
@@ -158,5 +159,7 @@ function playSound(correct: boolean) {
     gain.gain.value = 0.1;
     osc.start();
     osc.stop(ctx.currentTime + 0.15);
-  } catch {}
+  } catch {
+    // Ignore audio errors on unsupported browsers or restricted environments.
+  }
 }

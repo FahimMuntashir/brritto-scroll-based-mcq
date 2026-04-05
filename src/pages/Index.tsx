@@ -40,7 +40,8 @@ const Index = () => {
   }, [handleJumpApply]);
 
   const handleReset = useCallback(() => {
-    store.updateFilter('showOptions', true);
+    store.updateFilter('showOptions', false);
+    store.updateFilter('showAnswer', false);
     store.updateFilter('showExplanation', false);
     store.updateFilter('showAnalytics', false);
     store.updateFilter('showAllAnswers', false);
@@ -106,10 +107,10 @@ const Index = () => {
       />
 
       {/* Active filters indicator */}
-      {(store.filters.showAllAnswers || store.filters.showExplanation || store.filters.showAnalytics || !store.filters.showOptions) && (
+      {(store.filters.showAllAnswers || store.filters.showAnswer || store.filters.showExplanation || store.filters.showAnalytics) && (
         <div className="px-4 py-2 bg-primary/5 border-b border-border flex items-center gap-2 flex-wrap">
           {store.filters.showAllAnswers && <FilterChip label="All Answers" />}
-          {!store.filters.showOptions && <FilterChip label="No Options" />}
+          {store.filters.showAnswer && <FilterChip label="Answer" />}
           {store.filters.showExplanation && <FilterChip label="Explanations" />}
           {store.filters.showAnalytics && <FilterChip label="Analytics" />}
         </div>
@@ -165,6 +166,7 @@ const Index = () => {
         filters={store.filters}
         onApplyFilters={(nextFilters) => {
           store.updateFilter('showOptions', nextFilters.showOptions);
+          store.updateFilter('showAnswer', nextFilters.showAnswer);
           store.updateFilter('showExplanation', nextFilters.showExplanation);
           store.updateFilter('showAnalytics', nextFilters.showAnalytics);
           store.updateFilter('showAllAnswers', nextFilters.showAllAnswers);

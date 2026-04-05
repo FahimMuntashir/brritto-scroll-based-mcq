@@ -1,6 +1,6 @@
 import { MCQuestion, UserAnswer, FilterState } from '@/types/mcq';
-import { Bookmark, BarChart3, SkipForward, Volume2, ChevronDown, ChevronUp, MessageCircleQuestion } from 'lucide-react';
-import { useState } from 'react';
+import { Bookmark, SkipForward, Volume2, ChevronDown, ChevronUp, MessageCircleQuestion } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface QuestionCardProps {
   question: MCQuestion;
@@ -19,13 +19,34 @@ const QuestionCard = ({
   question, answer, filters, isFavourite,
   onSelectOption, onSkip, onToggleFavourite, onSpeak, onDoubt, showAllAnswers,
 }: QuestionCardProps) => {
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [explanationOpen, setExplanationOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [answerRevealed, setAnswerRevealed] = useState(false);
   const hasAnswered = !!answer && !answer.isSkipped;
+
+  useEffect(() => {
+    setOptionsOpen(false);
+    setExplanationOpen(false);
+    setAnalyticsOpen(false);
+    setAnswerRevealed(false);
+  }, [question.id]);
+
+  const analyticsNeedsOptions = filters.showAnalytics && (filters.showAnswer || filters.showExplanation);
+  const baseShowOptions = filters.showOptions || analyticsNeedsOptions;
+  const baseShowAnswer = filters.showAnswer || filters.showExplanation;
+  const showOptions = showAllAnswers || baseShowOptions || optionsOpen || hasAnswered;
+  const showAnswer = showAllAnswers || baseShowAnswer || answerRevealed;
   const showExplanation = filters.showExplanation || explanationOpen;
+  const showAnalytics = filters.showAnalytics || analyticsOpen;
+  const correctOnlyAutoReveal = filters.showAnalytics && filters.showOptions && !filters.showAnswer && !filters.showExplanation;
+  const canRevealExplanation = !showExplanation && (showAnswer || hasAnswered);
+  const canRevealAnalytics = !showAnalytics && (showAnswer || hasAnswered || showExplanation);
 
   const getOptionStyle = (optionId: string, isCorrect: boolean) => {
-    if (!hasAnswered && !showAllAnswers) return 'border-border bg-card hover:bg-muted/50';
+    if (!showAnswer && !hasAnswered && !showAllAnswers) return 'border-border bg-card hover:bg-muted/50';
     if (showAllAnswers && isCorrect) return 'border-success bg-success/10';
+    if (!hasAnswered && showAnswer && isCorrect) return 'border-success bg-success/10';
     if (!hasAnswered) return 'border-border bg-card';
     if (answer?.selectedOptionId === optionId) {
       return answer.isCorrect
@@ -56,15 +77,39 @@ const QuestionCard = ({
       {/* Question text */}
       <p className="text-sm font-medium text-foreground leading-relaxed mb-4">{question.text}</p>
 
+      {showAnswer && !showOptions && (
+        <div className="mb-3 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm">
+          <span className="font-semibold text-success">Answer: </span>
+          <span className="font-medium text-foreground">
+            {question.options.find(opt => opt.isCorrect)?.label}. {question.options.find(opt => opt.isCorrect)?.text}
+          </span>
+        </div>
+      )}
+
+      {!showOptions && (
+        <div className="mb-3">
+          <button
+            onClick={() => setOptionsOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+          >
+            Show Options
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Options */}
-      {filters.showOptions && (
+      {showOptions && (
         <div className="space-y-2 mb-3">
           {question.options.map(opt => (
             <button
               key={opt.id}
               onClick={() => {
                 if (hasAnswered || showAllAnswers) return;
-                setExplanationOpen(true);
+                setOptionsOpen(true);
+                if (!correctOnlyAutoReveal || opt.isCorrect) {
+                  setAnswerRevealed(true);
+                }
                 onSelectOption(opt.id);
               }}
               disabled={hasAnswered || showAllAnswers}
@@ -85,8 +130,41 @@ const QuestionCard = ({
         </div>
       )}
 
+      {canRevealExplanation || canRevealAnalytics ? (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {canRevealExplanation && (
+            <button
+              onClick={() => {
+                setOptionsOpen(true);
+                setAnswerRevealed(true);
+                setExplanationOpen(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+            >
+              Reveal Explanation
+            </button>
+          )}
+          {canRevealAnalytics && (
+            <button
+              onClick={() => {
+                if (showAnswer || showExplanation) {
+                  setOptionsOpen(true);
+                }
+                if (hasAnswered) {
+                  setAnswerRevealed(true);
+                }
+                setAnalyticsOpen(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted/80"
+            >
+              Show Analytics
+            </button>
+          )}
+        </div>
+      ) : null}
+
       {/* Explanation */}
-      {(showExplanation || (hasAnswered && !filters.showExplanation)) && (
+      {showExplanation && (
         <div className="mb-3">
           {!filters.showExplanation && (
             <button
@@ -105,7 +183,7 @@ const QuestionCard = ({
       )}
 
       {/* Analytics */}
-      {filters.showAnalytics && (
+      {showAnalytics && (
         <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3 bg-muted/40 rounded-lg px-3 py-2">
           <span className="text-success font-medium">{question.analytics.correctPercent}% Correct</span>
           <span className="text-destructive font-medium">{question.analytics.wrongPercent}% Wrong</span>
@@ -119,11 +197,8 @@ const QuestionCard = ({
           <button onClick={onDoubt} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-muted">
             <MessageCircleQuestion className="w-3.5 h-3.5" /> Doubt
           </button>
-          <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-muted">
-            <BarChart3 className="w-3.5 h-3.5" /> Analytics
-          </button>
         </div>
-        {!hasAnswered && !answer?.isSkipped && filters.showOptions && !showAllAnswers && (
+        {!hasAnswered && !answer?.isSkipped && showOptions && !showAllAnswers && !showAnswer && (
           <button
             onClick={onSkip}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-muted"
