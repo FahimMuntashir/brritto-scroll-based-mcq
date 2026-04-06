@@ -17,6 +17,10 @@ export interface MCQuestion {
     wrongPercent: number;
     totalAttempts: number;
     avgTime: number;
+    optionAttempts?: Array<{
+      optionId: string;
+      percent: number;
+    }>;
   };
 }
 

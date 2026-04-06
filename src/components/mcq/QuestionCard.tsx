@@ -1,6 +1,7 @@
 import { MCQuestion, UserAnswer, FilterState } from '@/types/mcq';
 import { Bookmark, SkipForward, Volume2, ChevronDown, ChevronUp, MessageCircleQuestion } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface QuestionCardProps {
   question: MCQuestion;
@@ -42,6 +43,7 @@ const QuestionCard = ({
   const correctOnlyAutoReveal = filters.showAnalytics && filters.showOptions && !filters.showAnswer && !filters.showExplanation;
   const canRevealExplanation = !showExplanation && (showAnswer || hasAnswered);
   const canRevealAnalytics = !showAnalytics && (showAnswer || hasAnswered || showExplanation);
+  const optionAttemptData = getOptionAttemptData(question);
 
   const getOptionStyle = (optionId: string, isCorrect: boolean) => {
     if (!showAnswer && !hasAnswered && !showAllAnswers) return 'border-border bg-card hover:bg-muted/50';
@@ -184,10 +186,67 @@ const QuestionCard = ({
 
       {/* Analytics */}
       {showAnalytics && (
-        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3 bg-muted/40 rounded-lg px-3 py-2">
-          <span className="text-success font-medium">{question.analytics.correctPercent}% Correct</span>
-          <span className="text-destructive font-medium">{question.analytics.wrongPercent}% Wrong</span>
-          <span>{question.analytics.totalAttempts.toLocaleString()} attempts</span>
+        <div className="mb-3 rounded-xl border border-border bg-muted/30 p-3">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Option Attempts</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">Pie chart based on attempted percentage per option</p>
+            </div>
+            <div className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-muted-foreground">
+              {question.analytics.totalAttempts.toLocaleString()} attempts
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-[160px_1fr] md:items-center">
+            <div className="h-44 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={optionAttemptData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={42}
+                    outerRadius={68}
+                    paddingAngle={3}
+                    labelLine={false}
+                    label={({ name, value }) => `${name} ${value}%`}
+                  >
+                    {optionAttemptData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number, _name, item) => [`${value}%`, item.payload.fullLabel]}
+                    contentStyle={{
+                      borderRadius: '12px',
+                      borderColor: 'hsl(var(--border))',
+                      backgroundColor: 'hsl(var(--background))',
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                {optionAttemptData.map((entry) => (
+                  <div key={entry.name} className="rounded-lg bg-background px-3 py-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                      <span className="font-semibold text-foreground">{entry.fullLabel}</span>
+                    </div>
+                    <p className="mt-1 text-muted-foreground">{entry.value}% attempted</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <StatBadge label="Right" value={`${question.analytics.correctPercent}%`} tone="success" />
+                <StatBadge label="Wrong" value={`${question.analytics.wrongPercent}%`} tone="destructive" />
+                <StatBadge label="Attempts" value={question.analytics.totalAttempts.toLocaleString()} tone="neutral" />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -215,3 +274,72 @@ const QuestionCard = ({
 };
 
 export default QuestionCard;
+
+const OPTION_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444'];
+
+function getOptionAttemptData(question: MCQuestion) {
+  if (question.analytics.optionAttempts?.length === question.options.length) {
+    return question.options.map((option, index) => ({
+      name: option.label,
+      fullLabel: `Option ${option.label}`,
+      value: question.analytics.optionAttempts?.find(item => item.optionId === option.id)?.percent ?? 0,
+      color: OPTION_COLORS[index % OPTION_COLORS.length],
+    }));
+  }
+
+  const correctIndex = question.options.findIndex(option => option.isCorrect);
+  const wrongWeights = [
+    [0.5, 0.3, 0.2],
+    [0.45, 0.35, 0.2],
+    [0.4, 0.35, 0.25],
+    [0.55, 0.25, 0.2],
+  ][(question.id - 1) % 4];
+
+  const optionPercents = new Array(question.options.length).fill(0);
+  optionPercents[correctIndex] = question.analytics.correctPercent;
+
+  const wrongIndexes = question.options.map((_, index) => index).filter(index => index !== correctIndex);
+  let assignedWrong = 0;
+
+  wrongIndexes.forEach((index, weightIndex) => {
+    const value = Math.round(question.analytics.wrongPercent * wrongWeights[weightIndex]);
+    optionPercents[index] = value;
+    assignedWrong += value;
+  });
+
+  const remainder = question.analytics.wrongPercent - assignedWrong;
+  if (wrongIndexes.length > 0) {
+    optionPercents[wrongIndexes[0]] += remainder;
+  }
+
+  return question.options.map((option, index) => ({
+    name: option.label,
+    fullLabel: `Option ${option.label}`,
+    value: optionPercents[index],
+    color: OPTION_COLORS[index % OPTION_COLORS.length],
+  }));
+}
+
+function StatBadge({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'success' | 'destructive' | 'neutral';
+}) {
+  const toneClass =
+    tone === 'success'
+      ? 'border-success/20 bg-success/10 text-success'
+      : tone === 'destructive'
+        ? 'border-destructive/20 bg-destructive/10 text-destructive'
+        : 'border-border bg-background text-foreground';
+
+  return (
+    <div className={`rounded-lg border px-3 py-2 ${toneClass}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em]">{label}</p>
+      <p className="mt-1 text-sm font-bold">{value}</p>
+    </div>
+  );
+}
