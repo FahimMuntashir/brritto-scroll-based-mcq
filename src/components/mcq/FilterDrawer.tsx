@@ -8,15 +8,13 @@ interface FilterDrawerProps {
   onClose: () => void;
   filters: FilterState;
   onApplyFilters: (nextFilters: FilterState) => void;
-  jumpToQuestion: string;
-  onJumpChange: (v: string) => void;
   onApply: () => void;
   onReset: () => void;
 }
 
 const FilterDrawer = ({
   open, onClose, filters, onApplyFilters,
-  jumpToQuestion, onJumpChange, onApply, onReset,
+  onApply, onReset,
 }: FilterDrawerProps) => {
   const [draftFilters, setDraftFilters] = useState(filters);
   const [validationMessage, setValidationMessage] = useState('');
@@ -79,18 +77,6 @@ const FilterDrawer = ({
             </div>
           ) : null}
 
-          <div className="pt-4 border-t border-border">
-            <p className="text-sm font-semibold text-foreground mb-2">JUMP TO QUESTION</p>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                placeholder="e.g. Question 12"
-                value={jumpToQuestion}
-                onChange={e => onJumpChange(e.target.value)}
-                className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-          </div>
         </div>
 
         <div className="flex gap-3 mt-6">
