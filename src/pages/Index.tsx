@@ -18,26 +18,12 @@ const Index = () => {
   const [view, setView] = useState<View>('feed');
   const [filterOpen, setFilterOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [jumpTo, setJumpTo] = useState('');
   const [doubtQuestion, setDoubtQuestion] = useState<{ id: number; text: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const handleJumpApply = useCallback(() => {
-    const num = parseInt(jumpTo);
-    if (!isNaN(num) && num >= 1 && num <= store.questions.length) {
-      const page = Math.ceil(num / 10);
-      store.setCurrentPage(page);
-      setTimeout(() => {
-        const el = document.getElementById(`question-${num}`);
-        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-    }
-  }, [jumpTo, store]);
-
   const handleApplyFilters = useCallback(() => {
-    handleJumpApply();
     setFilterOpen(false);
-  }, [handleJumpApply]);
+  }, []);
 
   const handleReset = useCallback(() => {
     store.updateFilter('showOptions', false);
@@ -45,7 +31,6 @@ const Index = () => {
     store.updateFilter('showExplanation', false);
     store.updateFilter('showAnalytics', false);
     store.updateFilter('showAllAnswers', false);
-    setJumpTo('');
   }, [store]);
 
   const handleSpeak = useCallback((text: string) => {
@@ -171,8 +156,6 @@ const Index = () => {
           store.updateFilter('showAnalytics', nextFilters.showAnalytics);
           store.updateFilter('showAllAnswers', nextFilters.showAllAnswers);
         }}
-        jumpToQuestion={jumpTo}
-        onJumpChange={setJumpTo}
         onApply={handleApplyFilters}
         onReset={handleReset}
       />
